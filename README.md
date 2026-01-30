@@ -31,7 +31,30 @@
 <img width="1422" height="882" alt="d2841566d33b8f86ba002e8ec28dd4ac" src="https://github.com/user-attachments/assets/f08c4f44-67a0-403d-b79a-b6a955021637" />
 <img width="1509" height="1059" alt="440c401c492e7f9b7e4b45f468326e5b" src="https://github.com/user-attachments/assets/e8f6a51c-8135-4456-b2d3-a07cd38aaf8d" />
 
-### **安装方法**
+### **快速开始 (Windows 用户推荐)**
+
+我们为您准备了**一键安装**和**一键启动**脚本，无需手动输入复杂命令。
+
+#### **1. 前置准备**
+确保您的电脑已安装：
+- **Python 3.10+**
+- **Node.js 16+**
+
+#### **2. 一键安装**
+双击运行根目录下的 `install_all.bat` 脚本。
+> 它会自动创建虚拟环境、安装后端依赖、安装前端依赖，并生成 `.env` 配置文件。
+
+⚠️ **注意**：安装完成后，请务必打开根目录下的 `.env` 文件，填入您的 `LLM_API_KEY`。
+
+#### **3. 一键启动**
+双击运行根目录下的 `start_app.bat` 脚本。
+> 它会自动启动后端 API 服务和前端网页。
+
+---
+
+### **手动安装方法 (Mac/Linux 或手动配置)**
+
+如果您无法使用脚本，或使用的是非 Windows 系统，请参考以下步骤：
 
 #### **1. 克隆项目**
 ```bash
