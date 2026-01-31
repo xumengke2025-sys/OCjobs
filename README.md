@@ -16,7 +16,7 @@
 
 ### **技术栈**
 
-- **后端**：Python 3.11+, Flask, Flask-CORS, OpenAI SDK, CAMEL-AI, CAMEL-OASIS, Pydantic
+- **后端**：Python 3.10/3.11 (Required), Flask, Flask-CORS, OpenAI SDK, CAMEL-AI, CAMEL-OASIS, Pydantic
 - **前端**：Vue 3 (Composition API), Vite, D3.js, Axios, Marked, Vue Router
 - **模型**：支持 DeepSeek, GPT-4o, Qwen 等主流大模型接口 (需支持 OpenAI 兼容格式)
 
@@ -35,6 +35,8 @@
 
 #### **1. 一键安装环境**
 在项目根目录下执行以下指令，系统将自动完成前后端所有依赖的安装（包括虚拟环境）：
+> **注意**：由于核心依赖 `camel-oasis` 的限制，**必须使用 Python 3.10 或 3.11 版本**。暂不支持 Python 3.12 及以上版本。
+
 ```bash
 npm run setup
 ```
@@ -61,6 +63,9 @@ cd wannian-
 ---
 
 ### **❓ 常见问题**
+
+**Q: 安装依赖时报错 `Could not find a version that satisfies the requirement camel-oasis`？**
+**A:** 这是因为你的 Python 版本太高了。`camel-oasis` 目前仅支持 Python 3.10 和 3.11。请安装并切换到这两个版本之一后再试。
 
 **Q: 启动后显示 `http proxy error: /api/...` 或 `ECONNREFUSED`？**
 **A:** 这通常是因为后端服务没有成功启动。请检查：
