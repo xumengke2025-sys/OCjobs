@@ -31,7 +31,23 @@
 <img width="1422" height="882" alt="d2841566d33b8f86ba002e8ec28dd4ac" src="https://github.com/user-attachments/assets/f08c4f44-67a0-403d-b79a-b6a955021637" />
 <img width="1509" height="1059" alt="440c401c492e7f9b7e4b45f468326e5b" src="https://github.com/user-attachments/assets/e8f6a51c-8135-4456-b2d3-a07cd38aaf8d" />
 
-### **安装方法**
+### **🚀 快速开始 (仅需两步)**
+
+#### **1. 一键安装环境**
+在项目根目录下执行以下指令，系统将自动完成前后端所有依赖的安装（包括虚拟环境）：
+```bash
+npm run setup
+```
+
+#### **2. 一键启动服务**
+配置好 `.env` 环境变量后，执行以下指令即可同时启动后端和前端：
+```bash
+npm run dev
+```
+
+---
+
+### **详细安装步骤**
 
 #### **1. 克隆项目**
 ```bash
@@ -39,34 +55,8 @@ git clone https://github.com/xumengke2025-sys/wannian-.git
 cd wannian-
 ```
 
-#### **2. 一键环境配置**
-项目提供了根目录脚本，可以同时初始化前后端环境（确保已安装 Node.js 18+ 和 Python 3.11+）：
-```bash
-npm run setup
-```
-*该脚本会自动安装前端依赖及后端虚拟环境和依赖包。*
-
----
-
-### **启动方法**
-
-#### **1. 配置环境变量**
-在项目根目录下，将 `.env.example` 重命名为 `.env`，并填入你的 API Key：
-- `LLM_API_KEY`: 你的大模型 API 密钥
-- `LLM_BASE_URL`: API 接口地址
-
-#### **2. 一键启动服务**
-在根目录下运行以下命令，即可同时启动后端 (Port 5002) 和前端 (Port 5173)：
-```bash
-npm run dev
-```
-
----
-
-#### **分步启动 (可选)**
-如果需要单独启动：
-- **后端**：`cd backend && python run.py`
-- **前端**：`cd frontend && npm run dev`
+#### **2. 配置环境变量**
+将根目录下的 `.env.example` 重命名为 `.env`，并填入你的 API Key。
 
 ---
 
