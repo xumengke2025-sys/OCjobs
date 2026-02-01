@@ -25,15 +25,16 @@ def main():
     else:
         print(f"Config Not Found: {env_path}")
 
-    # 验证配置
+    # 验证配置 (改为仅警告，不阻塞启动)
     errors = Config.validate()
     if errors:
-        print("\nStartup Failed: Config validation failed")
+        print("\n⚠️  Configuration Warning: Some API keys are missing")
         for err in errors:
             print(f"  - {err}")
-        print("\nPlease ensure .env file is configured correctly with LLM_API_KEY.")
+        print("The server will start, but fortune analysis will require configuration in .env")
         print("="*50 + "\n")
-        sys.exit(1)
+    else:
+        print("✅ Config validation passed")
     
     # 创建应用
     try:
