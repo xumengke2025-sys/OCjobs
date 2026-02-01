@@ -15,39 +15,39 @@ from app.config import Config
 def main():
     """主函数"""
     print("\n" + "="*50)
-    print("🚀 正在启动 万年 后端服务...")
-    print(f"📂 当前工作目录: {os.getcwd()}")
+    print("Starting Wannian Backend Service...")
+    print(f"Current Working Directory: {os.getcwd()}")
     
     # 检查 .env 文件是否存在
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../.env')
     if os.path.exists(env_path):
-        print(f"✅ 找到配置文件: {env_path}")
+        print(f"Found Config: {env_path}")
     else:
-        print(f"⚠️ 未找到 .env 文件: {env_path}")
+        print(f"Config Not Found: {env_path}")
 
     # 验证配置
     errors = Config.validate()
     if errors:
-        print("\n❌ 启动失败: 配置检查未通过")
+        print("\nStartup Failed: Config validation failed")
         for err in errors:
             print(f"  - {err}")
-        print("\n请确保根目录下的 .env 文件已正确配置 LLM_API_KEY。")
+        print("\nPlease ensure .env file is configured correctly with LLM_API_KEY.")
         print("="*50 + "\n")
         sys.exit(1)
     
     # 创建应用
     try:
         app = create_app()
-        print("✅ Flask 应用初始化成功")
+        print("Flask App initialized successfully")
     except Exception as e:
-        print(f"❌ Flask 应用初始化失败: {str(e)}")
+        print(f"Flask App initialization failed: {str(e)}")
         sys.exit(1)
     
     # 获取运行配置
     host = os.environ.get('FLASK_HOST', '127.0.0.1')
     port = int(os.environ.get('FLASK_PORT', 5002))
     
-    print(f"📡 服务将运行在: http://{host}:{port}")
+    print(f"Service running at: http://{host}:{port}")
     print("="*50 + "\n")
     
     # 启动服务
