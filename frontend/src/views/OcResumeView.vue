@@ -525,7 +525,7 @@ const onSendChat = async () => {
     chatMessages.value = [...chatMessages.value, { role: 'user', content: text, ts: now }]
     scrollToBottom()
     setTimeout(() => {
-      const reply = "（演示回复）非常有意思！您的经历确实非常独特。除了技术方面，您在团队协作中遇到过最大的挑战是什么？"
+      const reply = buildHrAutoReply(buildPersonaProfile(), selectedApplication.value || {}, text, chatMessages.value)
       chatMessages.value = [...chatMessages.value, { role: 'assistant', content: reply, ts: Math.floor(Date.now() / 1000) }]
       scrollToBottom()
       chatLoading.value = false
@@ -540,7 +540,7 @@ const onSendChat = async () => {
     chatMessages.value = next
     scrollToBottom()
     setTimeout(() => {
-      const reply = buildHrAutoReply(buildPersonaProfile(), selectedApplication.value, text)
+      const reply = buildHrAutoReply(buildPersonaProfile(), selectedApplication.value, text, next)
       const after = [...(localChatMap.value[selectedApplicationId.value] || next), { role: 'assistant', content: reply, ts: Math.floor(Date.now() / 1000) }]
       localChatMap.value = { ...localChatMap.value, [selectedApplicationId.value]: after }
       chatMessages.value = after
@@ -587,24 +587,55 @@ const getLastAssistantMessage = () => {
   return ''
 }
 
-const buildCandidateAutoReply = (profile, app, lastHr) => {
+const extractChatTopic = (text) => {
+  if (!text) return ''
+  if (/薪资|待遇|钱|报酬|期望/.test(text)) return 'salary'
+  if (/时间|面试|到岗|方便|排期/.test(text)) return 'time'
+  if (/项目|案例|作品|经历|挑战|背景/.test(text)) return 'project'
+  if (/动机|原因|为什么|选择|兴趣/.test(text)) return 'reason'
+  if (/优势|擅长|能力|强项|结果|指标/.test(text)) return 'strength'
+  if (/团队|协作|沟通|冲突/.test(text)) return 'teamwork'
+  return ''
+}
+
+const collectAskedTopics = (history = []) => {
+  const asked = new Set()
+  history.forEach((m) => {
+    if (m?.role === 'assistant') {
+      const topic = extractChatTopic(m.content || '')
+      if (topic) asked.add(topic)
+    }
+  })
+  return asked
+}
+
+const pickByIndex = (list, seed) => list[Math.abs(seed) % list.length]
+
+const buildCandidateAutoReply = (profile, app, lastHr, history = []) => {
   const role = app?.role || '该岗位'
   const companyName = app?.company_name || app?.companyName || '贵司'
   const key = pickKeyStrength(profile)
   const title = profile.title ? `，${profile.title}` : ''
   const text = lastHr || ''
   const tone = profile.tone
+  const seed = (history || []).length + text.length
+  const topic = extractChatTopic(text)
   if (tone === 'wuxia') {
-    if (/薪资|待遇|钱|报酬|银/.test(text)) return '银两可议，重在对手与规矩。若合意，愿听差遣。'
-    if (/时间|面试|方便|到岗/.test(text)) return '近来皆可。若要一战，随时可赴。'
-    if (/简历|材料|作品|项目/.test(text)) return '在下过往事迹尽录，可再呈上。'
-    return `在下${profile.name || '无名'}，愿以${key}之长相助${companyName}${role}，若有考校，尽管放马过来。`
+    if (topic === 'salary') return pickByIndex(['银两可议，重在对手与规矩。若合意，愿听差遣。', '金银非所重，唯求对手与场面。价可议。', '俸禄随规矩而定，若有用武之地，皆可商量。'], seed)
+    if (topic === 'time') return pickByIndex(['近来皆可。若要一战，随时可赴。', '行止自在，随时可到。', '若有召唤，三日内必至。'], seed)
+    if (topic === 'project') return pickByIndex([`曾独闯${companyName}难事，以${key}破局，战果可述。`, `旧事不赘，唯有一役：凭${key}力挽危局。`, `在下有一役可表：以${key}之长，定局于千里之外。`], seed)
+    if (topic === 'reason') return pickByIndex([`因${companyName}名在江湖，愿试此职。`, `闻${companyName}求贤，欲一试身手。`, `此职与我所长相合，愿来一搏。`], seed)
+    if (topic === 'strength') return pickByIndex([`在下所长唯${key}，出剑即见分晓。`, `武有长短，我以${key}立身。`, `若论强项，唯${key}可示人。`], seed)
+    if (topic === 'teamwork') return pickByIndex(['与同道并肩亦无妨，规矩之内，皆可协作。', '江湖行走，懂得配合与分工。', '我虽独行，亦知队伍之道。'], seed)
+    return pickByIndex([`在下${profile.name || '无名'}，愿以${key}之长相助${companyName}${role}。`, `在下${profile.name || '无名'}，求一席用武之地。`, `在下${profile.name || '无名'}，愿与${companyName}共事，试此职。`], seed)
   }
-  if (/薪资|待遇|钱|报酬|期望/.test(text)) return '薪资可根据岗位级别与职责匹配度再细聊，我更关注成长空间与业务挑战。'
-  if (/时间|面试|方便|到岗/.test(text)) return '本周内均可安排沟通，时间上比较灵活。'
-  if (/简历|材料|作品|项目/.test(text)) return `我可以补充相关项目材料，也愿详细说明${key}经历。`
-  if (/为什么|动机|原因|兴趣/.test(text)) return `主要是看重${companyName}在该方向的积累，也希望把我的${key}能力放在更有挑战的场景。`
-  return `您好，我是${profile.name}${title}。对${companyName}${role}很感兴趣，也愿进一步说明我的${key}经历。`
+  if (topic === 'salary') return pickByIndex(['薪资可根据岗位级别与职责匹配度再细聊，我更关注成长空间与业务挑战。', '薪资期望希望与岗位责任匹配，可再详细沟通。', '我更在意岗位成长与业务挑战，薪资可按职级面议。'], seed)
+  if (topic === 'time') return pickByIndex(['本周内均可安排沟通，时间上比较灵活。', '近期时间比较灵活，面试安排都可以配合。', '我这周和下周都可安排，具体时间可协调。'], seed)
+  if (topic === 'project') return pickByIndex([`我可以补充相关项目材料，也愿详细说明${key}经历。`, `我愿意分享一个与${role}最相关的项目，重点是我的职责与结果。`, `可以补充项目细节，尤其是与${key}相关的实践。`], seed)
+  if (topic === 'reason') return pickByIndex([`主要是看重${companyName}在该方向的积累，也希望把我的${key}能力放在更有挑战的场景。`, `我关注${companyName}的业务方向，认为与我的经历匹配度高。`, `希望在${companyName}的业务中发挥${key}优势，同时提升成长。`], seed)
+  if (topic === 'strength') return pickByIndex([`我的优势在${key}，过去项目中多次推动关键结果落地。`, `擅长${key}，也比较注重可量化的交付结果。`, `强项是${key}，并且习惯用结果指标来验证效果。`], seed)
+  if (topic === 'teamwork') return pickByIndex(['我比较注重协作与对齐，习惯用清晰目标推进合作。', '协作中会主动对齐目标与节奏，减少信息差。', '团队协作上更强调流程与结果的透明同步。'], seed)
+  return pickByIndex([`您好，我是${profile.name}${title}。对${companyName}${role}很感兴趣，也愿进一步说明我的${key}经历。`, `您好，我是${profile.name}${title}，愿意分享与${role}相关的经验与成果。`, `您好，我是${profile.name}${title}，期待进一步交流岗位需求与我的匹配点。`], seed)
 }
 
 const onAutoReply = () => {
@@ -612,7 +643,7 @@ const onAutoReply = () => {
   const profile = buildPersonaProfile()
   const app = selectedApplication.value || {}
   const lastHr = getLastAssistantMessage()
-  const reply = buildCandidateAutoReply(profile, app, lastHr)
+  const reply = buildCandidateAutoReply(profile, app, lastHr, chatMessages.value)
   if (!reply) return
   chatInput.value = reply
   onSendChat()
@@ -704,38 +735,94 @@ const buildCandidateIntro = (profile, role, companyName, style) => {
 const buildHrGreeting = (profile, role, companyName, style, keyStrength) => {
   const key = keyStrength || pickKeyStrength(profile)
   
-  if (style === 'startup') return `Hey！看到你简历上写了${key}，感觉很Hardcore啊！我们团队都是年轻人，要不要来面基一下？🚀`
-  if (style === 'trendy') return `宝子！你的${key}经历太戳我了！😍 我们正缺这样一个${role}，快来加入我们！`
-  if (style === 'serious') return `您好，这里是${companyName}人事部。经评估您的${key}经验符合我司${role}岗位要求，现邀请您进行初步沟通。`
-  if (style === 'professional') return `您好，${companyName}正在寻找${role}。鉴于您在${key}领域的积累，我们认为您是极佳的人选。`
+  if (style === 'startup') return `Hi！我看了下你的简历，${key}这块挺亮眼的。我们这边节奏快但成长空间大，要不要先聊聊？`
+  if (style === 'trendy') return `嗨～看到你的${key}经历很有感觉！我们正好在招${role}，想先简单沟通下～`
+  if (style === 'serious') return `您好，这里是${companyName}人事部。我们已初步评估您的${key}经验与${role}岗位匹配，想与您进行沟通。`
+  if (style === 'professional') return `您好，${companyName}正在招聘${role}。看到您在${key}方面的积累，想进一步了解您的情况。`
 
   return `您好，这里是${companyName}招聘${role || '相关岗位'}。看到您的简历，想了解您在${key}方面的经历，方便聊聊吗？`
 }
 
 const buildHrFollowup = (profile, style) => {
-  if (style === 'startup') return 'Nice！那啥，咱们这儿虽然累点但成长快（也可能是大饼）。你期望薪资大概多少？下周能来搬砖不？'
-  if (style === 'trendy') return '太棒惹！👏 那薪资方面有什么小目标吗？什么时候能来玩？'
-  if (style === 'serious') return '收到。请问您的期望薪资范围是多少？最快到岗时间？'
+  if (style === 'startup') return '好的收到～我们这边节奏确实快但机会多。方便说下你期望薪资和可面试时间吗？'
+  if (style === 'trendy') return '了解啦～那薪资期望大概在什么区间？这周哪天方便聊？'
+  if (style === 'serious') return '收到。请告知期望薪资范围与最早到岗时间。'
   
   return '感谢说明。方便补充一下期望薪资和可面试时间吗？'
 }
 
-const buildHrAutoReply = (profile, app, userText) => {
+const buildHrAutoReply = (profile, app, userText, history = []) => {
   const style = app.style || 'normal'
-  if (/薪资|待遇|钱/.test(userText)) {
-    if (style === 'startup') return '期权给够！现金咱们可以再聊，主要是看能力！'
-    if (style === 'trendy') return '薪资包满意的！只要活好，老板超大方！💰'
-    if (style === 'serious') return '我们会根据职级体系定薪。请提供目前的薪资证明。'
-    return '薪资可面议。方便告知期望范围和到岗时间吗？'
+  const role = app?.role || '该岗位'
+  const companyName = app?.company_name || app?.companyName || '贵司'
+  const key = app?.key_strength || pickKeyStrength(profile)
+  const text = userText || ''
+  const asked = collectAskedTopics(history)
+  const userTopic = extractChatTopic(text)
+  if (userTopic) asked.add(userTopic)
+  const baseIndex = (history || []).length + text.length
+  const pick = (list) => pickByIndex(list, baseIndex)
+  const topicOrder = ['project', 'reason', 'strength', 'salary', 'time', 'teamwork']
+  const nextTopic = topicOrder.find(t => !asked.has(t)) || topicOrder[Math.abs(baseIndex) % topicOrder.length]
+
+  const ack = () => {
+    if (userTopic === 'salary') return pick([`了解薪资诉求。`, `明白薪资预期了。`])
+    if (userTopic === 'time') return pick([`时间安排收到。`, `了解你的时间情况。`])
+    if (userTopic === 'project') return pick([`项目情况了解了。`, `谢谢你补充项目细节。`])
+    if (userTopic === 'reason') return pick([`动机了解了。`, `明白你的选择原因。`])
+    if (userTopic === 'strength') return pick([`优势点了解了。`, `收到你强调的能力点。`])
+    if (userTopic === 'teamwork') return pick([`协作习惯了解了。`, `了解你的团队配合方式。`])
+    return pick([`收到～`, `了解～`])
   }
-  
-  if (/时间|面试|方便/.test(userText)) {
-    if (style === 'startup') return '今晚就可以！或者周末也行，我们随时都在！'
-    if (style === 'serious') return '请等待HRBP的电话通知，我们会安排统一面试。'
-    return '感谢说明。我们这边可安排面试，您近期哪天方便？'
+
+  const questionMap = {
+    project: {
+      startup: [`想更了解你的实战经历～能讲一个你最得意的项目吗？`, `我们更看重落地结果，分享下你最有代表性的项目？`],
+      trendy: [`想听听你的作品/案例，哪个最能代表你？`, `可以聊聊一个你最有成就感的项目吗？`],
+      serious: [`请简述一个与${role}相关的项目经历及成果。`, `请提供一段与岗位相关的项目描述与结果指标。`],
+      professional: [`能否概述一个相关项目的背景、你的职责与关键结果？`, `方便分享一个你主导或参与的重要项目与产出吗？`],
+      normal: [`能分享一个相关项目吗？重点说说你的贡献与结果。`, `想了解你在${key}方面的实操经历，举个例子？`]
+    },
+    reason: {
+      startup: [`你为什么想加入我们团队？最打动你的点是什么？`, `你对我们业务的兴趣点是什么？`],
+      trendy: [`你对${companyName}的印象是？为什么想加入？`, `你选择这个方向的动机是？`],
+      serious: [`请说明选择该岗位的原因与职业动机。`, `请阐述加入${companyName}的原因。`],
+      professional: [`你对${companyName}${role}岗位的兴趣点是什么？`, `是什么驱动你选择这个方向？`],
+      normal: [`你为什么想加入${companyName}，或者选择这个方向？`, `你对${companyName}或这个岗位的兴趣点是什么？`]
+    },
+    strength: {
+      startup: [`你最大的优势是什么？能给点结果数据更好。`, `你觉得自己最能打的能力点是什么？`],
+      trendy: [`你觉得自己最能代表你的能力是什么？`, `你最擅长的方向是哪一块？`],
+      serious: [`请说明核心优势与对应成果指标。`, `请说明与岗位相关的优势能力与结果。`],
+      professional: [`你认为自己的优势点是什么？有哪些结果可以量化？`, `在过往经历里，你最能体现价值的一件事是什么？`],
+      normal: [`你认为自己的优势点是什么？`, `能举一个体现你优势的结果吗？`]
+    },
+    salary: {
+      startup: [`我们更看重成长与结果，你期望薪资区间是多少？`, `薪资可聊，给个你期待的范围？`],
+      trendy: [`待遇可以聊，你期望区间大概多少？`, `你这边有目标薪资范围吗？`],
+      serious: [`请提供期望薪资区间与当前薪资结构。`, `请说明期望薪资范围。`],
+      professional: [`薪资会结合岗位级别评估，想了解你的期望区间。`, `我们先确认期望范围，便于评估。`],
+      normal: [`方便说下你的薪资期望区间吗？`, `我们也会评估薪资，先了解你的期望范围？`]
+    },
+    time: {
+      startup: [`我们节奏比较快，你这周哪天方便？`, `面试时间弹性大，给个可行时间段即可。`],
+      trendy: [`你近期哪天方便面试？`, `给两个方便的时间段吧～`],
+      serious: [`请提供可面试时间段。`, `请给出两个可选时间段。`],
+      professional: [`我们可安排面试，请提供两到三个可选时间。`, `感谢反馈，方便给出可面试时间区间吗？`],
+      normal: [`我们这边可安排面试，近期哪天方便？`, `你方便的时间段是？`]
+    },
+    teamwork: {
+      startup: [`你在团队协作里通常扮演什么角色？`, `跨团队协作时你一般怎么推进？`],
+      trendy: [`你在团队里是推动型还是支持型？`, `遇到分歧时你一般怎么处理？`],
+      serious: [`请说明团队协作中的角色与协同方式。`, `请说明跨团队协作经验。`],
+      professional: [`你在团队协作里通常怎么分工对齐？`, `遇到意见分歧时你如何处理？`],
+      normal: [`说说你在团队协作中的习惯？`, `遇到冲突时你通常怎么处理？`]
+    }
   }
-  
-  return '收到，我们继续评估匹配度，方便补充期望薪资与到岗时间吗？'
+
+  const styleKey = ['startup', 'trendy', 'serious', 'professional'].includes(style) ? style : 'normal'
+  const question = pick(questionMap[nextTopic][styleKey])
+  return `${ack()}${question}`
 }
 
 const buildFallbackCompanies = (profile) => {
