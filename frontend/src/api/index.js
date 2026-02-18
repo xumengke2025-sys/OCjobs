@@ -16,6 +16,12 @@ service.interceptors.request.use(
   config => {
     // 添加请求时间戳用于性能监控
     config.metadata = { startTime: Date.now() }
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type']
+        delete config.headers['content-type']
+      }
+    }
     return config
   },
   error => {

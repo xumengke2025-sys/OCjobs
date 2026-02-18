@@ -7,6 +7,9 @@
         <router-link to="/fortune" class="fortune-link">
           进入推演试验场 <span class="badge">BETA</span>
         </router-link>
+        <router-link to="/oc" class="fortune-link">
+          OC 一键求职 <span class="badge">NEW</span>
+        </router-link>
       </div>
     </nav>
 
@@ -103,6 +106,12 @@ const router = useRouter()
   font-size: 20px;
   letter-spacing: 2px;
   color: #FFF;
+}
+
+.nav-links {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .nav-links .fortune-link {

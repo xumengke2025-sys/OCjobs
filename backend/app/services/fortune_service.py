@@ -108,8 +108,9 @@ class FortuneService:
                 return persona["id"], persona["name"], f"推演过程中发生错误: {str(e)}"
 
         def background_execution():
-            # 调整并发数为 25，提升并行处理效率
-            with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+            # 增加并发数到 49，实现真正意义上的全大师并行
+            # 49位大师同时推演，将第一阶段耗时压缩到单次LLM调用的时间
+            with concurrent.futures.ThreadPoolExecutor(max_workers=49) as executor:
                 future_to_agent = {executor.submit(run_agent_task, p): p for p in MASTER_PERSONAS}
                 
                 completed = 0

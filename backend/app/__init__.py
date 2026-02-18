@@ -57,9 +57,12 @@ def create_app(config_class=Config):
         return response
     
     # 注册蓝图
-    from .api import fortune_bp
+    from .api import fortune_bp, recruit_bp
     app.register_blueprint(fortune_bp, url_prefix='/api/fortune')
     logger.info("已注册 Fortune 蓝图")
+    
+    app.register_blueprint(recruit_bp, url_prefix='/api/recruit')
+    logger.info("已注册 Recruit 蓝图")
     
     # 健康检查
     @app.route('/health')
@@ -70,4 +73,3 @@ def create_app(config_class=Config):
         logger.info("万年 Backend 启动完成")
     
     return app
-

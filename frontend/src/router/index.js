@@ -1,17 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
 import FortuneView from '../views/FortuneView.vue'
+import OcResumeView from '../views/OcResumeView.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Home
+    redirect: '/oc'
   },
   {
     path: '/fortune',
     name: 'Fortune',
     component: FortuneView
+  },
+  {
+    path: '/oc',
+    name: 'OcResume',
+    component: OcResumeView
   }
 ]
 

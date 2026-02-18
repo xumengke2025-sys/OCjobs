@@ -138,28 +138,39 @@ YEARLY_GRAPH_PROMPT = """
 4. **必须标注原文引用**：每个节点必须包含 `source_quote` 字段
 
 # 节点数量要求（{{year}}年）：
-- **维度级限制（CRITICAL）**：
+- **维度级配额（目标与上限）**：
   * **consensus (共识)**：每个维度 1 个（全维度共 4 个）。必须聚合 3-5 位以上大师的共同观点，严禁只反映一位大师的意见。`master_name` 统一设为 "众师共识"。
-  * **unique (独特观点)**：**每个维度最多 10 个**。如果识别到更多，仅保留最具有代表性、跨大师印证最多的观点。
-  * **variable (转折/变数)**：**每个维度最多 5 个**。必须包含关键抉择、机遇或转折。
-- **维度覆盖**：必须涵盖事业、财富、情感、健康 4 个维度。
-- **核心要求：多大师观点聚合**：
-  * **consensus (共识)**：每个维度 1 个。**必须聚合 3-5 位以上大师的共同观点**，严禁只反映一位大师的意见。`master_name` 统一设为 "众师共识"。
-  * **unique (独特观点)**：每个维度最多 10 个。如果多位大师有相似的非共识观点，**必须合并为一个节点**，并在 `master_name` 中列出所有贡献大师。
-  * **variable (转折/变数)**：每个维度最多 5 个。必须包含抉择、机遇或转折。如果多个大师都识别到了同一个变数，**必须合并**。
+  * **unique (独特观点)**：**每个维度必须生成 10 个**。必须涵盖不同大师的独特见解，只要是与共识不同的、有价值的细节，都应尽可能保留。
+  * **variable (转折/变数)**：**每个维度必须生成 5 个**。必须包含关键抉择、机遇或突发转折。
+- **总量要求（CRITICAL）**：每年必须生成 **不少于 40 个** 节点，目标 **40-60 个**，确保图谱极其丰富。
+- **核心要求：多大师视角与深度**：
+  * **禁止过度合并**：除非两个观点完全雷同，否则应作为独立节点保留，以体现命理推演的多样性。
+  * **consensus (共识)**：必须聚合 3-5 位以上大师的共同观点。
+  * **unique (独特观点)**：每个维度上限 10 个。鼓励识别多位大师的细微差异并分别呈现。
+  * **variable (转折/变数)**：每个维度上限 5 个。必须包含抉择、机遇或转折。
 
 # 聚合描述要求：
 - **多来源标注**：在 `description` 开头明确标注「【来源：大师A、大师B、大师C】」。
 - **深度融合**：将不同大师提供的细节进行互补，形成一段逻辑连贯、内容丰富的深度推演。
 
-# 节点类型定义（CRITICAL）：
-1. **Consensus (共识)**：多位大师共同提到的核心趋势。
-2. **Unique (独特观点)**：与共识不同或更具体的视角，优先展示多师印证的独特见解。
-3. **Variable (转折/变数)**：涉及机遇、抉择或风险的关键时刻。优先合并多位大师共同预警的变数。
+# 节点类型定义（CRITICAL - 必须有明显区分度）：
+1. **Consensus (共识)**：
+   - **定义**：全年的“命运主线”，代表超过 60% 大师达成的确定性趋势。
+   - **特征**：宏观、稳健、高概率。描述应体现“大势所趋”。
+   - **禁止**：严禁包含具体的、偶然的小概率事件。
+2. **Unique (独特观点)**：
+   - **定义**：全年的“命运细节”或“异见信号”。
+   - **特征**：**必须与共识节点有显著差异**。可以是共识之外的补充细节，或者是少数派大师提出的对立预警。
+   - **禁止**：严禁复述共识节点的内容。如果一个观点只是共识的另一种说法，必须删除。
+3. **Variable (转折/变数)**：
+   - **定义**：命运的“抉择关口”或“突发转折”。
+   - **特征**：**必须包含触发条件或抉择因素**。通常带有“若...则...”、“除非...否则...”的逻辑。涉及机遇捕捉或风险规避。
+   - **禁止**：严禁描述已经确定的趋势，必须体现出“不确定性”和“人为选择的影响”。
 
-# 来源多样性要求（CRITICAL）：
-- **严禁**只使用少数几位大师（如艾薇、毕达哥等）的观点。
-- 尽可能挖掘不同大师的观点，确保来源的丰富性和多样性。
+# 聚合描述风格指南：
+- **Consensus**：使用确定性语气，如“定数”、“大势”、“基调”。
+- **Unique**：使用发现性语气，如“隐秘信号”、“独到见解”、“补充视角”。
+- **Variable**：使用警示/建议语气，如“抉择关头”、“变量点”、“若能...则...”。
 
 # 节点数据结构：
 ```json
@@ -270,36 +281,80 @@ class FortuneAggregator:
         all_consensus = []
         all_conflicts = []
         
-        # 逐年生成图谱
+        # 准备每年生成的参数
+        year_tasks = []
         for i in range(future_years):
             year = current_year + i
             year_str = f"{year}年"
             
-            if on_progress:
-                progress = 94 + (i * 5 // future_years)
-                on_progress(progress, f"正在凝聚 {year_str} 的天机图谱...")
+            # 针对当前年份进行 Token 智能压缩
+            compressed_reports_text = ""
+            current_year_short = str(year)
+            # 扩充关键词，涵盖更多维度的同义词
+            all_keywords = [
+                "事业", "工作", "晋升", "职场", "创业", "职位", "名声", "学业",
+                "财富", "金钱", "投资", "收益", "破财", "财运", "收入", "理财",
+                "情感", "感情", "婚姻", "恋爱", "桃花", "伴侣", "家庭", "姻缘",
+                "健康", "身体", "疾病", "养生", "平安", "体质", "调养", "医疗",
+                "运势", "机遇", "风险", "变数", "抉择", "转折", "突破", "挑战"
+            ]
             
-            try:
-                year_result = self._generate_year_graph(
-                    year_str, user_context, preprocessed_reports
-                )
+            for agent_id, report_data in reports.items():
+                content = report_data.get('content', '')
+                paragraphs = re.split(r'[\n。！？]', content)
+                relevant_paras = []
+                for p in paragraphs:
+                    p = p.strip()
+                    if not p: continue
+                    # 只要包含年份，或者包含任何维度关键词，就保留
+                    if current_year_short in p or any(kw in p for kw in all_keywords):
+                        relevant_paras.append(p)
                 
-                # 合并结果
-                year_nodes = year_result.get("graph_data", {}).get("nodes", [])
-                year_edges = year_result.get("graph_data", {}).get("edges", [])
+                if relevant_paras:
+                    compressed_reports_text += f"\n--- 【{report_data['name']}】 ---\n" + "。".join(relevant_paras) + "。\n"
+
+            if len(compressed_reports_text) > 15000:
+                compressed_reports_text = compressed_reports_text[:15000] + "...(内容过多已截断)"
+
+            year_context = f"用户信息: {json.dumps(user_data, ensure_ascii=False)}\n\n=== 49位大师 {year_str} 相关推演文本 ===\n{compressed_reports_text}"
+            year_tasks.append((year_str, year_context))
+
+        # 并行执行年份生成
+        with concurrent.futures.ThreadPoolExecutor(max_workers=future_years) as executor:
+            future_to_year = {
+                executor.submit(self._generate_year_graph, year_str, year_context, preprocessed_reports): year_str 
+                for year_str, year_context in year_tasks
+            }
+            
+            completed_count = 0
+            for future in concurrent.futures.as_completed(future_to_year):
+                year_str = future_to_year[future]
+                completed_count += 1
                 
-                all_nodes.extend(year_nodes)
-                all_edges.extend(year_edges)
-                all_consensus.extend(year_result.get("consensus", []))
-                all_conflicts.extend(year_result.get("conflicts", []))
+                if on_progress:
+                    progress = 94 + (completed_count * 5 // future_years)
+                    on_progress(progress, f"正在凝聚 {year_str} 的天机图谱 ({completed_count}/{future_years})...")
                 
-                logger.info(f"{year_str} 生成完成: {len(year_nodes)} 个节点")
-                
-            except Exception as e:
-                logger.error(f"{year_str} 图谱生成失败: {str(e)}")
-                # 如果某一年失败，使用补充逻辑生成该年的节点
-                year_nodes = self._generate_fallback_year_nodes(year_str, preprocessed_reports)
-                all_nodes.extend(year_nodes)
+                try:
+                    year_result = future.result()
+                    
+                    # 合并结果
+                    year_nodes = year_result.get("graph_data", {}).get("nodes", [])
+                    year_edges = year_result.get("graph_data", {}).get("edges", [])
+                    
+                    all_nodes.extend(year_nodes)
+                    all_edges.extend(year_edges)
+                    all_consensus.extend(year_result.get("consensus", []))
+                    all_conflicts.extend(year_result.get("conflicts", []))
+                    
+                    logger.info(f"{year_str} 并行生成完成: {len(year_nodes)} 个节点")
+                    
+                except Exception as e:
+                    logger.error(f"{year_str} 图谱并行生成失败: {str(e)}")
+                    # 回退逻辑
+                    year_nodes = self._generate_fallback_year_nodes(year_str, preprocessed_reports)
+                    all_nodes.extend(year_nodes)
+        
         
         # 构建完整的图谱结果
         graph_result = {
@@ -452,16 +507,19 @@ class FortuneAggregator:
         for dim in dimensions:
             # 1. 共识节点：每个维度 1 个，聚合前 5 位大师
             consensus_desc, consensus_masters = self._extract_aggregated_consensus(preprocessed_reports, dim, year)
+            consensus_para = ""
             if consensus_desc:
+                # 提取共识文本内容用于去重校验
+                consensus_para = re.sub(r'【来源：.*?】', '', consensus_desc).strip()
                 nodes.append({
                     "id": f"{year.replace('年', '')}_n{node_id}",
                     "properties": {
-                        "name": f"{dim_names[dim]}众师共识",
+                        "name": f"{dim_names[dim]}命运主线",
                         "time": year,
-                        "description": f"【来源：{consensus_masters}】\n{consensus_desc}",
+                        "description": f"【{dim_names[dim]}主线】此为众师达成的核心共识：{consensus_desc}",
                         "master_name": "众师共识",
                         "source_quote": consensus_desc[:150],
-                        "source_master": consensus_masters,
+                        "source_master": consensus_masters.split('、')[0] if '、' in consensus_masters else consensus_masters,
                         "type": "consensus",
                         "impact": 8,
                         "dimension": dim
@@ -476,15 +534,25 @@ class FortuneAggregator:
             dim_unique = []
             dim_variable = []
             
+            # 强化变数识别关键词
+            strict_variable_kws = ["若", "如果", "一旦", "除非", "取决于", "抉择", "变数", "转折点", "机遇与风险并存"]
+            
             for group in grouped_candidates:
                 para = group['para']
                 masters = group['masters']
-                is_variable = any(kw in para for kw in variable_keywords)
+                
+                # 语义去重：如果该观点与共识高度重合，则跳过
+                if consensus_para:
+                    common_chars = set(para) & set(consensus_para)
+                    if len(common_chars) > len(para) * 0.6: # 超过60%重合视为雷同
+                        continue
+
+                is_variable = any(kw in para for kw in strict_variable_kws)
                 
                 candidate_data = {
                     "para": para,
                     "masters": masters,
-                    "score": len(masters) # 以聚合大师数量作为评分标准
+                    "score": len(masters)
                 }
                 
                 if is_variable:
@@ -492,7 +560,7 @@ class FortuneAggregator:
                 else:
                     dim_unique.append(candidate_data)
 
-            # 筛选独特观点：每个维度最多 10 个，优先选择聚合大师多的
+            # 筛选独特观点：每个维度最多 10 个
             dim_unique.sort(key=lambda x: x['score'], reverse=True)
             for cand in dim_unique[:10]:
                 para = cand['para']
@@ -503,7 +571,7 @@ class FortuneAggregator:
                     "properties": {
                         "name": self._extract_node_title(para, dim, "unique"),
                         "time": year,
-                        "description": f"【来源：{m_names}】\n{para}",
+                        "description": f"【独特信号】来自少数派大师的深入观察：{para}",
                         "master_name": m_names,
                         "source_quote": para[:150],
                         "source_master": masters[0],
@@ -525,7 +593,7 @@ class FortuneAggregator:
                     "properties": {
                         "name": self._extract_node_title(para, dim, "variable"),
                         "time": year,
-                        "description": f"【来源：{m_names}】\n{para}",
+                        "description": f"【命运变数】此节点涉及关键抉择或不确定性：{para}",
                         "master_name": m_names,
                         "source_quote": para[:150],
                         "source_master": masters[0],
@@ -764,27 +832,23 @@ class FortuneAggregator:
         if len(chinese_chars) < 2 or len(chinese_chars) > 5:
             return False
         
-        # 断词检测 - 以下结尾的标题是不完整的句子片段
+        # 断词检测 - 仅针对最明显的介词、连词结尾进行过滤
         broken_endings = [
-            "将", "把", "被", "让", "使", "给", "向", "往", "朝",  # 介词/助词
-            "的", "地", "得", "着", "了", "过",  # 助词
-            "是", "在", "有", "和", "与", "或", "及",  # 动词/连词
+            "将", "把", "被", "让", "使", "给", "向", "往", "朝",  # 介词
+            "的", "地", "得", "和", "与", "或", "及",  # 助词/连词
             "而", "但", "却", "并", "且", "也", "都",  # 连词/副词
-            "能", "会", "可", "要", "应", "该", "需",  # 能愿动词
             "很", "太", "最", "更", "较", "比",  # 程度副词
-            "这", "那", "其", "某", "每", "各",  # 指示词
-            "视", "当", "为", "成", "做", "如", "若",  # 动词/连词
             "从", "自", "于", "至", "到", "以", "因",  # 介词
             "对", "关", "经", "通", "按", "据"  # 介词
         ]
         if clean_title and clean_title[-1] in broken_endings:
             return False
         
-        # 断词检测 - 以下开头的标题是不完整的句子片段
+        # 断词检测 - 仅针对最明显的助词、连词开头进行过滤
         broken_beginnings = [
             "的", "地", "得", "了", "着", "过",  # 助词
             "和", "与", "或", "及", "并", "且",  # 连词
-            "而", "但", "却", "则", "便", "即"  # 连词
+            "而", "但", "却"  # 连词
         ]
         if clean_title and clean_title[0] in broken_beginnings:
             return False
@@ -829,8 +893,8 @@ class FortuneAggregator:
         if used_titles is None:
             used_titles = []
         
-        # 根据节点类型添加前缀
-        type_prefix = {"consensus": "", "unique": "✨", "variable": "⚡"}
+        # 根据节点类型添加前缀，增强视觉区分
+        type_prefix = {"consensus": "🏛️", "unique": "✨", "variable": "⚡"}
         prefix = type_prefix.get(node_type, "")
         
         # 核心关键词库 - 用于从描述中匹配
@@ -896,24 +960,24 @@ class FortuneAggregator:
         # 兜底：返回一个通用但有效的标题
         fallback_titles = {
             "career": {
-                "consensus": "事业稳健",
-                "unique": "贵人显现",
-                "variable": "变动风险"
+                "consensus": "事业大势",
+                "unique": "职场信号",
+                "variable": "事业转折"
             },
             "wealth": {
-                "consensus": "财运平稳",
-                "unique": "偏财机会",
-                "variable": "破财防范"
+                "consensus": "财富主轴",
+                "unique": "求财机会",
+                "variable": "理财变数"
             },
             "emotion": {
-                "consensus": "感情顺遂",
-                "unique": "桃花机遇",
-                "variable": "感情波折"
+                "consensus": "情缘定数",
+                "unique": "情感波长",
+                "variable": "感情抉择"
             },
             "health": {
-                "consensus": "身体康健",
-                "unique": "养生调理",
-                "variable": "健康预警"
+                "consensus": "元气基调",
+                "unique": "养生视角",
+                "variable": "健康关口"
             }
         }
         
@@ -1338,59 +1402,121 @@ class FortuneAggregator:
                     dim_total += 1
                     year_total += 1
                 
-                # 如果该维度总节点数太少（<3），尝试补充一些 unique 节点
-                # 虽然用户说不限数量，但如果太少（比如只有1个共识），UI会很难看
-                if dim_total < 3:
-                    needed = 3 - dim_total
-                    logger.info(f"{year}-{dim} 节点过少({dim_total})，补充 {needed} 个独特观点")
+                # 如果该维度总节点数较少（目标 15+），尝试补充更多 unique 或 variable 节点
+                if dim_total < 15:
+                    needed = 15 - dim_total
+                    logger.info(f"{year}-{dim} 节点较少({dim_total})，尝试补充 {needed} 个节点以达到饱和状态")
                     
-                    # 尝试提取更多 unique 节点
+                    # 尝试提取更多相关的段落
                     all_candidates = self._extract_all_relevant_paragraphs(preprocessed_reports, dim, year)
-                    random.shuffle(all_candidates)
+                    # 按照长度排序，优先选择内容丰富的
+                    all_candidates.sort(key=lambda x: len(x[0]), reverse=True)
                     
                     added = 0
                     for para, master_name in all_candidates:
                         if added >= needed:
                             break
-                        # 允许大师重复，只要内容不同
-                        # 但如果大师已经作为共识来源，还是尽量避开，除非没得选
-                        if master_name in used_masters_by_year_dim[key]:
-                            # 如果候选者太少，允许复用大师
-                            if len(all_candidates) > 5:
-                                continue
-                            
-                        title = self._extract_node_title(para, dim, "unique")
-                        source_quote = para[:800] if len(para) > 800 else para
                         
-                        # 检查内容是否重复
-                        if any(source_quote in n.get("properties", {}).get("source_quote", "") for n in nodes):
+                        # 检查内容是否重复（与已有节点比较）
+                        source_quote = para[:800] if len(para) > 800 else para
+                        if any(source_quote[:50] in n.get("properties", {}).get("source_quote", "") for n in nodes):
                             continue
+
+                        # 简单判断是否为变数
+                        strict_variable_kws = ["若", "如果", "一旦", "除非", "取决于", "抉择", "变数", "转折点", "机遇与风险并存"]
+                        is_variable = any(kw in para for kw in strict_variable_kws)
+                        node_type = "variable" if is_variable else "unique"
+                        
+                        # 检查该维度的配额 (Unique 10, Variable 5)
+                        unique_count = len(dim_nodes.get("unique", []))
+                        variable_count = len(dim_nodes.get("variable", []))
+                        
+                        if node_type == "unique" and unique_count >= 10:
+                            # 如果 unique 满了但 variable 没满，尝试作为 variable 加入（如果包含变数关键词）
+                            if variable_count < 5 and is_variable:
+                                node_type = "variable"
+                            else:
+                                continue
+                                
+                        if node_type == "variable" and variable_count >= 5:
+                            # 如果 variable 满了但 unique 没满，作为 unique 加入
+                            if unique_count < 10:
+                                node_type = "unique"
+                            else:
+                                continue
+
+                        title = self._extract_node_title(para, dim, node_type)
                         
                         new_node = {
                             "id": f"n{node_id_counter}",
                             "properties": {
                                 "name": title,
                                 "time": year,
-                                "description": f"【来源：{master_name}】原文：「{source_quote}」\n\n{master_name}独特见解：{para}",
+                                "description": f"【来源：{master_name}】原文：「{source_quote}」\n\n{master_name}深度推演：{para}",
                                 "master_name": master_name,
                                 "source_quote": source_quote,
                                 "source_master": master_name,
-                                "school_source": "综合推演",
-                                "type": "unique",
-                                "impact": random.randint(5, 8),
+                                "school_source": "深度补充",
+                                "type": node_type,
+                                "impact": random.randint(5, 9),
                                 "dimension": dim
                             }
                         }
                         nodes.append(new_node)
                         node_id_counter += 1
-                        used_masters_by_year_dim[key].append(master_name)
                         added += 1
                         dim_total += 1
                         year_total += 1
+                        # 记录到分类中，以便后续判断配额
+                        if node_type not in dim_nodes: dim_nodes[node_type] = []
+                        dim_nodes[node_type].append(new_node)
 
-            # 检查每年总数是否达到20个（基础保障）
-            if year_total < 20:
-                logger.warning(f"{year} 年节点总数不足: 现有{year_total}个，目标20个")
+            # 检查每年总数是否达到 40 个（强力保障）
+            if year_total < 40:
+                logger.warning(f"{year} 年节点总数不足({year_total})，启动全局高密度补充模式...")
+                # 如果还是不够40个，无视维度配额，只要是该年份的高质量文本都塞进去
+                remaining_needed = 40 - year_total
+                
+                # 搜集所有该年份的候选段落
+                all_year_candidates = []
+                for d in required_dims:
+                    all_year_candidates.extend(self._extract_all_relevant_paragraphs(preprocessed_reports, d, year))
+                
+                all_year_candidates.sort(key=lambda x: len(x[0]), reverse=True)
+                
+                added = 0
+                for para, master_name in all_year_candidates:
+                    if added >= remaining_needed: break
+                    
+                    source_quote = para[:800] if len(para) > 800 else para
+                    if any(source_quote[:50] in n.get("properties", {}).get("source_quote", "") for n in nodes):
+                        continue
+                        
+                    # 识别维度
+                    dim = "career"
+                    for d_key, d_name in dim_names.items():
+                        if any(kw in para for kw in [d_name, d_key]):
+                            dim = d_key
+                            break
+                    
+                    new_node = {
+                        "id": f"n{node_id_counter}",
+                        "properties": {
+                            "name": self._extract_node_title(para, dim, "unique"),
+                            "time": year,
+                            "description": f"【来源：{master_name}】原文：「{source_quote}」\n\n{master_name}补充视角：{para}",
+                            "master_name": master_name,
+                            "source_quote": source_quote,
+                            "source_master": master_name,
+                            "type": "unique",
+                            "impact": random.randint(5, 7),
+                            "dimension": dim
+                        }
+                    }
+                    nodes.append(new_node)
+                    node_id_counter += 1
+                    added += 1
+                    year_total += 1
         
         logger.info(f"节点补充完成，当前总节点数: {len(nodes)}")
         return nodes
