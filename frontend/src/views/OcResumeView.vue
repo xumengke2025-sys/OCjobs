@@ -222,6 +222,7 @@
               <div class="chat-tools">
                 <button class="tool-btn" @click="sendAction('resume')">📄 发送简历</button>
                 <button class="tool-btn" @click="sendAction('wechat')">📱 交换微信</button>
+                <button class="tool-btn" @click="onAutoReply">🎭 角色续聊</button>
                 <button class="tool-btn" @click="sendAction('phone')">📞 交换电话</button>
               </div>
               <div class="chat-input-row">
@@ -576,6 +577,45 @@ const sendAction = (type) => {
     chatInput.value = text
     onSendChat()
   }
+}
+
+const getLastAssistantMessage = () => {
+  const list = chatMessages.value || []
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i]?.role === 'assistant') return list[i]?.content || ''
+  }
+  return ''
+}
+
+const buildCandidateAutoReply = (profile, app, lastHr) => {
+  const role = app?.role || '该岗位'
+  const companyName = app?.company_name || app?.companyName || '贵司'
+  const key = pickKeyStrength(profile)
+  const title = profile.title ? `，${profile.title}` : ''
+  const text = lastHr || ''
+  const tone = profile.tone
+  if (tone === 'wuxia') {
+    if (/薪资|待遇|钱|报酬|银/.test(text)) return '银两可议，重在对手与规矩。若合意，愿听差遣。'
+    if (/时间|面试|方便|到岗/.test(text)) return '近来皆可。若要一战，随时可赴。'
+    if (/简历|材料|作品|项目/.test(text)) return '在下过往事迹尽录，可再呈上。'
+    return `在下${profile.name || '无名'}，愿以${key}之长相助${companyName}${role}，若有考校，尽管放马过来。`
+  }
+  if (/薪资|待遇|钱|报酬|期望/.test(text)) return '薪资可根据岗位级别与职责匹配度再细聊，我更关注成长空间与业务挑战。'
+  if (/时间|面试|方便|到岗/.test(text)) return '本周内均可安排沟通，时间上比较灵活。'
+  if (/简历|材料|作品|项目/.test(text)) return `我可以补充相关项目材料，也愿详细说明${key}经历。`
+  if (/为什么|动机|原因|兴趣/.test(text)) return `主要是看重${companyName}在该方向的积累，也希望把我的${key}能力放在更有挑战的场景。`
+  return `您好，我是${profile.name}${title}。对${companyName}${role}很感兴趣，也愿进一步说明我的${key}经历。`
+}
+
+const onAutoReply = () => {
+  if (!selectedApplicationId.value) return
+  const profile = buildPersonaProfile()
+  const app = selectedApplication.value || {}
+  const lastHr = getLastAssistantMessage()
+  const reply = buildCandidateAutoReply(profile, app, lastHr)
+  if (!reply) return
+  chatInput.value = reply
+  onSendChat()
 }
 
 const scrollToBottom = async () => {
